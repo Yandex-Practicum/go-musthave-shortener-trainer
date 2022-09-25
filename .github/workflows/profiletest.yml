@@ -11,8 +11,9 @@ jobs:
     steps:
       - name: Checkout current branch
         uses: actions/checkout@v3
-        ref: ''
-        path: './current'
+        with:
+          ref: ''
+          path: './current'
 
       - name: Build current server binary
         run: |
@@ -20,8 +21,9 @@ jobs:
 
       - name: Checkout main branch
         uses: actions/checkout@v3
-        ref: 'main'
-        path: './base'
+        with:
+          ref: 'main'
+          path: './base'
 
       - name: Build base server binary
         run: |

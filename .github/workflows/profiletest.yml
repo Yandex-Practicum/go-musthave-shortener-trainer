@@ -1,0 +1,66 @@
+name: profiling
+
+on:
+  pull_request:
+
+jobs:
+
+  profiletest:
+    runs-on: ubuntu-latest
+    container: golang:1.18
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v3
+        with:
+          ref: ''
+          path: './current'
+
+      - name: Build current server binary
+        run: |
+          (cd ./current/cmd/shortener && go build -o shortener)
+
+      - name: Checkout main branch
+        uses: actions/checkout@v3
+        with:
+          ref: 'main'
+          path: './base'
+
+      - name: Build base server binary
+        run: |
+          (cd ./base/cmd/shortener && go build -o shortener)
+
+      - name: Download autotests binaries
+        uses: robinraju/release-downloader@v1.2
+        with:
+          repository: Yandex-Practicum/go-autotests
+          latest: true
+          fileName: "*"
+          out-file-path: .tools
+
+      - name: Prepare for stress test
+        run: |
+          chmod -R +x $GITHUB_WORKSPACE/.tools
+          mv $GITHUB_WORKSPACE/.tools/shortenerstress /usr/local/bin/shortenerstress
+          mkdir -p /tmp/results
+
+      - name: Run stress on base
+        run: |
+          cd $GITHUB_WORKSPACE/base/cmd/shortener
+          ./shortener -a=":8080" &
+          sleep 2
+          go tool pprof -top -output=/tmp/results/base.pprof http://localhost:8080/debug/pprof/profile?seconds=10 &
+          ./shortenerstress -n 100 http://localhost:8080/
+          sleep 10
+
+      - name: Run stress on current
+        run: |
+          cd $GITHUB_WORKSPACE/current/cmd/shortener
+          ./shortener -a=":8081" &
+          sleep 2
+          go tool pprof -top -output=/tmp/results/current.pprof http://localhost:8081/debug/pprof/profile?seconds=10 &
+          ./shortenerstress -n 100 http://localhost:8081/
+          sleep 10
+
+      - name: Show diff
+        run: |
+          go tool pprof -diff_base /tmp/results/base.pprof /tmp/results/current.pprof

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"net/http/pprof"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,13 @@ func newRouter(i *app.Instance) http.Handler {
 	r.Get("/{id}", i.ExpandHandler)
 	r.Get("/api/user/urls", i.UserURLsHandler)
 	r.Get("/ping", i.PingHandler)
+
+	// enable pprof
+	r.HandleFunc("/debug/pprof/", pprof.Index)
+	r.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	r.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	r.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	r.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	return r
 }
